@@ -1,1 +1,1 @@
-# labelforge-frontend
+# LF-frontend

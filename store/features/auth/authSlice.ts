@@ -61,7 +61,7 @@ function writeCache(u: AuthUser | null) {
 
 // ─── Thunks ───────────────────────────────────────────────────────────────────
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+const API_BASE = ''
 
 export const fetchCurrentUser = createAsyncThunk(
   'auth/fetchCurrentUser',

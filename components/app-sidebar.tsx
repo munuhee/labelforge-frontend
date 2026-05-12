@@ -32,8 +32,8 @@ function getNavItems(role: UserRole, basePath: string) {
     case 'qa_lead':
       return [
         { title: "Overview", url: `${basePath}`, icon: LayoutDashboard, exact: true },
-        { title: "Work", url: `${basePath}/work`, icon: Briefcase },
         { title: "Reviews", url: `${basePath}/reviews`, icon: ShieldCheck },
+        { title: "Work", url: `${basePath}/work`, icon: Briefcase },
         { title: "Reports", url: `${basePath}/reports`, icon: BarChart3 },
         { title: "Notifications", url: `${basePath}/notifications`, icon: Bell },
         { title: "Settings", url: `${basePath}/settings`, icon: Settings },
@@ -45,17 +45,17 @@ function getNavItems(role: UserRole, basePath: string) {
         { title: "Projects", url: `${basePath}/batches`, icon: FolderOpen },
         { title: "Work", url: `${basePath}/work`, icon: Briefcase },
         { title: "Reports", url: `${basePath}/reports`, icon: BarChart3 },
+        { title: "Workspace", url: `${basePath}/admin`, icon: Layers },
         { title: "Notifications", url: `${basePath}/notifications`, icon: Bell },
         { title: "Settings", url: `${basePath}/settings`, icon: Settings },
-        { title: "Workspace", url: `${basePath}/admin`, icon: Layers },
       ]
 
     case 'super_admin':
       return [
         { title: "System Overview", url: `${basePath}`, icon: LayoutDashboard, exact: true },
         { title: "Workspaces", url: `${basePath}/admin`, icon: ShieldCheck },
-        { title: "Work", url: `${basePath}/work`, icon: Briefcase },
         { title: "Reports", url: `${basePath}/reports`, icon: BarChart3 },
+        { title: "Work", url: `${basePath}/work`, icon: Briefcase },
         { title: "Notifications", url: `${basePath}/notifications`, icon: Bell },
         { title: "Settings", url: `${basePath}/settings`, icon: Settings },
       ]

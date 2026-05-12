@@ -35,10 +35,10 @@ export function FieldWorkerNav() {
   const navItems = [
     { href: basePath,                          icon: LayoutDashboard, label: 'Dashboard',     badge: undefined as number | undefined },
     { href: `${basePath}/work`,                icon: ClipboardList,   label: 'My Work',        badge: undefined },
-    { href: `${basePath}/notifications`,       icon: Bell,            label: 'Notifications',  badge: unread || undefined },
     ...(user?.role === 'reviewer' || user?.role === 'reviewer_annotator'
       ? [{ href: `${basePath}/reviews`, icon: Star, label: 'Reviews', badge: undefined }]
       : []),
+    { href: `${basePath}/notifications`,       icon: Bell,            label: 'Notifications',  badge: unread || undefined },
     { href: `${basePath}/settings`, icon: Settings, label: 'Settings', badge: undefined },
   ]
 

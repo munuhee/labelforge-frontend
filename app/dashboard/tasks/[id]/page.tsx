@@ -337,6 +337,9 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                     <DropdownMenuItem onClick={() => window.open(task.externalUrl!, '_blank', 'noopener,noreferrer')}>
                       <ExternalLink className="h-3.5 w-3.5 mr-2" />Open Website
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigator.clipboard.writeText(task.externalUrl!)}>
+                      <Copy className="h-3.5 w-3.5 mr-2" />Copy URL (paste in incognito)
+                    </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
@@ -480,10 +483,13 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                   </CardTitle>
                   <CardDescription className="text-xs font-mono truncate">{task.externalUrl}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-col gap-2">
                   <Button className="w-full gap-2" onClick={() => window.open(task.externalUrl!, '_blank', 'noopener,noreferrer')}
                     disabled={isLocked && !canReview}>
                     <ExternalLink className="h-4 w-4" />Open in New Tab
+                  </Button>
+                  <Button variant="outline" className="w-full gap-2" onClick={() => navigator.clipboard.writeText(task.externalUrl!)}>
+                    <Copy className="h-4 w-4" />Copy URL (paste in incognito)
                   </Button>
                 </CardContent>
               </Card>

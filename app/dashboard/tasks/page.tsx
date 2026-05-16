@@ -30,7 +30,7 @@ export default function TasksPage() {
     const params: Record<string, string> = { mine: 'true', page: String(page), limit: String(PAGE_SIZE) }
     if (statusFilter !== 'all') params.status = statusFilter
     api.tasks.list(params)
-      .then(r => { setTasks(r.tasks as Task[]); setTotal(r.total) })
+      .then(r => { setTasks((r.tasks ?? []) as Task[]); setTotal(r.total ?? 0) })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setIsLoading(false))
   }, [user, page, statusFilter])

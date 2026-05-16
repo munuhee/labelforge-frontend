@@ -26,7 +26,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
 
   const fetchTab = async (status: string, page: number, setter: (t: Task[]) => void, totalSetter: (n: number) => void) => {
     const r = await api.tasks.list({ mine: 'true', status, page: String(page), limit: String(PAGE_SIZE) })
-    setter(r.tasks as Task[]); totalSetter(r.total)
+    setter((r.tasks ?? []) as Task[]); totalSetter(r.total ?? 0)
   }
 
   useEffect(() => {

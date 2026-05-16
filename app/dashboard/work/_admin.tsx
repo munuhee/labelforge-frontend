@@ -72,8 +72,8 @@ export default function AdminWork() {
     try {
       const params = { ...buildParams(f), page: String(p), limit: String(PAGE_SIZE) }
       const result = await api.tasks.list(params)
-      setTasks(result.tasks as Task[])
-      setTotal(result.total)
+      setTasks((result.tasks ?? []) as Task[])
+      setTotal(result.total ?? 0)
       setPage(p)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Search failed')

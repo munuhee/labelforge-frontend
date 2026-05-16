@@ -187,9 +187,11 @@ export const api = {
   },
 
   tasks: {
-    list: (params?: Record<string, string>): Promise<{ tasks: unknown[]; total: number; page: number; pages: number; limit: number }> => {
+    list: async (params?: Record<string, string>): Promise<{ tasks: unknown[]; total: number; page: number; pages: number; limit: number }> => {
       const q = params ? '?' + new URLSearchParams(params).toString() : ''
-      return apiFetch(`/api/tasks${q}`) as Promise<{ tasks: unknown[]; total: number; page: number; pages: number; limit: number }>
+      const res = await apiFetch(`/api/tasks${q}`)
+      if (Array.isArray(res)) return { tasks: res, total: res.length, page: 1, pages: 1, limit: res.length }
+      return res as { tasks: unknown[]; total: number; page: number; pages: number; limit: number }
     },
     get: (id: string) => apiFetch(`/api/tasks/${id}`),
     create: (data: Record<string, unknown>) =>

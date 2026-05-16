@@ -210,9 +210,9 @@ export const api = {
       apiFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'remove-error-tag', tagId }) }),
     resolveErrorTag: (id: string, tagId: string) =>
       apiFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'resolve-error-tag', tagId }) }),
-    bulkImport: (batchId: string, tasks: Record<string, unknown>[], metadata?: Record<string, unknown>) =>
+    bulkImport: (batchId: string, tasks: Record<string, unknown>[], metadata?: Record<string, unknown>): Promise<{ created: number; errors: number; errorDetails: { index: number; error: string }[]; taskIds: string[] }> =>
       apiFetch('/api/tasks/bulk', { method: 'POST', body: JSON.stringify({ batchId, tasks, metadata }) })
-        .then(r => { _bust('/api/tasks'); _bust('/api/batches'); _bust('/api/analytics'); return r }),
+        .then(r => { _bust('/api/tasks'); _bust('/api/batches'); _bust('/api/analytics'); return r as { created: number; errors: number; errorDetails: { index: number; error: string }[]; taskIds: string[] } }),
     delete: (id: string) =>
       apiFetch(`/api/tasks/${id}`, { method: 'DELETE' })
         .then(r => { _bust('/api/batches'); _bust('/api/analytics'); return r }),

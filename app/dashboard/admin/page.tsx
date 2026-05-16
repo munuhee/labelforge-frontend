@@ -523,7 +523,7 @@ function ClientAdminPage() {
   const [importFormat, setImportFormat] = useState<'json' | 'csv'>('json')
   const [importMeta, setImportMeta] = useState({ priority: '', difficulty: '', languageTags: '', sla: '', estimatedDuration: '' })
   const [importError, setImportError] = useState('')
-  const [importResult, setImportResult] = useState<{ created: number; errors: number } | null>(null)
+  const [importResult, setImportResult] = useState<{ created: number; errors: number; errorDetails?: { index: number; error: string }[] } | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -681,12 +681,9 @@ function ClientAdminPage() {
     if (importMeta.languageTags) metadata.languageTags = importMeta.languageTags
     try {
       const result = await api.tasks.bulkImport(importBatch.id, tasks, metadata)
-      setImportResult({ created: result.created, errors: result.errors })
+      setImportResult({ created: result.created, errors: result.errors, errorDetails: result.errorDetails })
       const updated = await api.batches.list()
       setBatches(updated)
-      if (result.errors === 0) {
-        setTimeout(() => { setImportBatch(null); setImportText(''); setImportResult(null) }, 2000)
-      }
     } catch (e: unknown) {
       setImportError(e instanceof Error ? e.message : 'Import failed')
     } finally { setIsImporting(false) }
@@ -1266,20 +1263,42 @@ function ClientAdminPage() {
               </div>
             )}
             {importResult && (
-              <div className={`flex items-center gap-2 p-3 rounded-lg border ${importResult.errors === 0 ? 'bg-success/10 border-success/30' : 'bg-warning/10 border-warning/30'}`}>
-                <Check className={`h-4 w-4 shrink-0 ${importResult.errors === 0 ? 'text-success' : 'text-warning'}`} />
-                <p className={`text-xs font-medium ${importResult.errors === 0 ? 'text-success' : 'text-warning'}`}>
-                  {importResult.created} task{importResult.created !== 1 ? 's' : ''} created
-                  {importResult.errors > 0 && ` · ${importResult.errors} error${importResult.errors !== 1 ? 's' : ''}`}
-                </p>
+              <div className={`space-y-2 p-3 rounded-lg border ${importResult.errors === 0 ? 'bg-success/10 border-success/30' : 'bg-warning/10 border-warning/30'}`}>
+                <div className="flex items-center gap-2">
+                  <Check className={`h-4 w-4 shrink-0 ${importResult.errors === 0 ? 'text-success' : 'text-warning'}`} />
+                  <p className={`text-xs font-medium ${importResult.errors === 0 ? 'text-success' : 'text-warning'}`}>
+                    {importResult.created} task{importResult.created !== 1 ? 's' : ''} imported successfully
+                    {importResult.errors > 0 && ` · ${importResult.errors} row${importResult.errors !== 1 ? 's' : ''} failed`}
+                  </p>
+                </div>
+                {importResult.errorDetails && importResult.errorDetails.length > 0 && (
+                  <ul className="text-xs text-warning space-y-0.5 pl-6 list-disc">
+                    {importResult.errorDetails.map(e => (
+                      <li key={e.index}>Row {e.index + 1}: {e.error}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setImportBatch(null); setImportText(''); setImportResult(null) }}>Cancel</Button>
-            <Button onClick={handleImport} disabled={isImporting || !importText.trim()}>
-              <Upload className="h-4 w-4 mr-2" />{isImporting ? `Importing…` : 'Import Tasks'}
-            </Button>
+            {importResult ? (
+              <>
+                <Button variant="outline" onClick={() => { setImportResult(null); setImportText('') }}>
+                  Import More
+                </Button>
+                <Button onClick={() => { setImportBatch(null); setImportText(''); setImportResult(null) }}>
+                  <Check className="h-4 w-4 mr-2" />Done
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => { setImportBatch(null); setImportText(''); setImportResult(null) }}>Cancel</Button>
+                <Button onClick={handleImport} disabled={isImporting || !importText.trim()}>
+                  <Upload className="h-4 w-4 mr-2" />{isImporting ? 'Importing…' : 'Import Tasks'}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

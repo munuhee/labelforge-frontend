@@ -7,10 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { TopBar } from '@/components/top-bar'
 import { StatusBadge, PriorityBadge, TaskTypeBadge } from '@/components/status-badge'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import type { Batch, Task } from '@/lib/types'
 import { isClientAdmin } from '@/lib/types'
+
+const PAGE_SIZE = 10
 
 interface BatchDetail extends Batch {
   instructions?: string
@@ -23,6 +26,7 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
   const [batch, setBatch] = useState<BatchDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [taskPage, setTaskPage] = useState(1)
 
   useEffect(() => {
     api.batches.get(id)
@@ -62,6 +66,7 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
   const myTasks = user?.role === 'annotator'
     ? batch.tasks.filter(t => t.annotatorId === user.id)
     : batch.tasks
+  const paginatedTasks = myTasks.slice((taskPage - 1) * PAGE_SIZE, taskPage * PAGE_SIZE)
 
   return (
     <>
@@ -107,7 +112,7 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
             ) : (
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold">Tasks ({myTasks.length})</h3>
-                {myTasks.map(task => (
+                {paginatedTasks.map(task => (
                   <Card key={task.id} className="border-border bg-card hover:border-primary/50 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between gap-4">
@@ -146,6 +151,7 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
                     </CardContent>
                   </Card>
                 ))}
+                <PaginationBar page={taskPage} total={myTasks.length} pageSize={PAGE_SIZE} onPage={setTaskPage} />
               </div>
             )}
           </div>

@@ -1,10 +1,18 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 export function PaginationBar({
   page, total, pageSize, onPage,
 }: { page: number; total: number; pageSize: number; onPage: (p: number) => void }) {
   const pages = Math.ceil(total / pageSize)
+  const [inputVal, setInputVal] = useState(String(page))
+
+  useEffect(() => { setInputVal(String(page)) }, [page])
+
   if (pages <= 1) return null
 
   const getPageNumbers = (): (number | '...')[] => {
@@ -17,6 +25,12 @@ export function PaginationBar({
     if (page < pages - 2) items.push('...')
     items.push(pages)
     return items
+  }
+
+  const commit = (val: string) => {
+    const n = parseInt(val, 10)
+    if (!isNaN(n)) onPage(Math.min(Math.max(1, n), pages))
+    else setInputVal(String(page))
   }
 
   const from = Math.min((page - 1) * pageSize + 1, total)
@@ -42,6 +56,14 @@ export function PaginationBar({
         <Button variant="outline" size="sm" className="h-7 w-7 p-0" disabled={page === pages} onClick={() => onPage(page + 1)}>
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
+        <span className="text-xs text-muted-foreground ml-1">Go to</span>
+        <Input
+          className="h-7 w-12 text-xs text-center px-1"
+          value={inputVal}
+          onChange={e => setInputVal(e.target.value)}
+          onBlur={e => commit(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(inputVal) }}
+        />
       </div>
     </div>
   )

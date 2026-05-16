@@ -49,24 +49,8 @@ export default function AdminWork() {
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-
-  useEffect(() => {
-    if (isSuperAdmin) {
-      api.clients.list().then(setClients).catch(() => {})
-    }
-  }, [isSuperAdmin])
-
-  useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === 'visible' && lastSearch.current) {
-        runSearch(lastSearch.current.f, lastSearch.current.p)
-      }
-    }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [runSearch])
-
-  const set = (k: keyof Filters, v: string) => setFilters(p => ({ ...p, [k]: v }))
+  const [total, setTotal] = useState(0)
+  const lastSearch = useRef<{ f: Filters; p: number } | null>(null)
 
   const buildParams = (f: Filters): Record<string, string> => {
     const p: Record<string, string> = {}
@@ -79,9 +63,6 @@ export default function AdminWork() {
     if (f.clientId)       p.clientId       = f.clientId
     return p
   }
-
-  const [total, setTotal] = useState(0)
-  const lastSearch = useRef<{ f: Filters; p: number } | null>(null)
 
   const runSearch = useCallback(async (f: Filters, p = 1) => {
     setIsSearching(true)
@@ -100,6 +81,24 @@ export default function AdminWork() {
       setTotal(0)
     } finally { setIsSearching(false) }
   }, [])
+
+  const set = (k: keyof Filters, v: string) => setFilters(p => ({ ...p, [k]: v }))
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      api.clients.list().then(setClients).catch(() => {})
+    }
+  }, [isSuperAdmin])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && lastSearch.current) {
+        runSearch(lastSearch.current.f, lastSearch.current.p)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [runSearch])
 
   const hasFilters = Object.values(filters).some(v => v !== '')
 

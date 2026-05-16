@@ -8,9 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TopBar } from '@/components/top-bar'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import type { Review } from '@/lib/types'
+
+const PAGE_SIZE = 10
 
 const statusColor: Record<string, string> = {
   'approved': 'bg-success/10 text-success border-success/20',
@@ -27,6 +30,8 @@ export default function ReviewerWork({ hideTitle }: { hideTitle?: boolean } = {}
   const [reviews, setReviews] = useState<Review[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [activePage, setActivePage] = useState(1)
+  const [donePage, setDonePage] = useState(1)
 
   useEffect(() => {
     api.reviews.list()
@@ -92,12 +97,18 @@ export default function ReviewerWork({ hideTitle }: { hideTitle?: boolean } = {}
             </TabsList>
             <TabsContent value="active">
               <div className="space-y-3">
-                {active.length ? active.map(r => <ReviewRow key={r.id} review={r} />) : <Empty label="No active reviews" />}
+                {active.length
+                  ? active.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE).map(r => <ReviewRow key={r.id} review={r} />)
+                  : <Empty label="No active reviews" />}
+                <PaginationBar page={activePage} total={active.length} pageSize={PAGE_SIZE} onPage={setActivePage} />
               </div>
             </TabsContent>
             <TabsContent value="done">
               <div className="space-y-3">
-                {done.length ? done.map(r => <ReviewRow key={r.id} review={r} />) : <Empty label="No completed reviews yet" />}
+                {done.length
+                  ? done.slice((donePage - 1) * PAGE_SIZE, donePage * PAGE_SIZE).map(r => <ReviewRow key={r.id} review={r} />)
+                  : <Empty label="No completed reviews yet" />}
+                <PaginationBar page={donePage} total={done.length} pageSize={PAGE_SIZE} onPage={setDonePage} />
               </div>
             </TabsContent>
           </Tabs>

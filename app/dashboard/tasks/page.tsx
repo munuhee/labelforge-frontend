@@ -18,6 +18,7 @@ const PAGE_SIZE = 15
 export default function TasksPage() {
   const { user } = useAuth()
   const [tasks, setTasks] = useState<Task[]>([])
+  const [total, setTotal] = useState(0)
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all')
   const [page, setPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
@@ -25,21 +26,23 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (!user) return
-    api.tasks.list({ mine: 'true' })
-      .then(setTasks)
+    setIsLoading(true)
+    const params: Record<string, string> = { mine: 'true', page: String(page), limit: String(PAGE_SIZE) }
+    if (statusFilter !== 'all') params.status = statusFilter
+    api.tasks.list(params)
+      .then(r => { setTasks(r.tasks as Task[]); setTotal(r.total) })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setIsLoading(false))
-  }, [user])
+  }, [user, page, statusFilter])
 
-  const filtered = tasks.filter(t => statusFilter === 'all' || t.status === statusFilter)
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const paginated = tasks
 
   return (
     <>
       <TopBar title="My Tasks" subtitle="Track and manage your assigned tasks" />
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="flex items-center gap-3 mb-4">
-          <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as TaskStatus | 'all'); setPage(1) }}>
+          <Select value={statusFilter} onValueChange={v => { setStatusFilter(v as TaskStatus | 'all'); setPage(1); setTasks([]) }}>
             <SelectTrigger className="w-[160px] bg-card border-border h-9">
               <Filter className="h-3.5 w-3.5 mr-2" />
               <SelectValue placeholder="Status" />
@@ -54,14 +57,14 @@ export default function TasksPage() {
               <SelectItem value="revision-requested">Revision Needed</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-sm text-muted-foreground">{filtered.length} task{filtered.length !== 1 ? 's' : ''}</span>
+          <span className="text-sm text-muted-foreground">{total} task{total !== 1 ? 's' : ''}</span>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>
         ) : error ? (
           <div className="flex items-center justify-center py-12 text-destructive text-sm">{error}</div>
-        ) : filtered.length === 0 ? (
+        ) : total === 0 ? (
           <Card className="border-border bg-card">
             <CardContent className="flex flex-col items-center justify-center py-12">
               <p className="text-muted-foreground mb-4">No tasks found</p>
@@ -108,7 +111,7 @@ export default function TasksPage() {
                 </CardContent>
               </Card>
             ))}
-            <PaginationBar page={page} total={filtered.length} pageSize={PAGE_SIZE} onPage={setPage} />
+            <PaginationBar page={page} total={total} pageSize={PAGE_SIZE} onPage={setPage} />
           </div>
         )}
       </main>

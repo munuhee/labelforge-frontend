@@ -10,9 +10,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TopBar } from '@/components/top-bar'
 import { StatusBadge } from '@/components/status-badge'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import type { Task, Client } from '@/lib/types'
+
+const PAGE_SIZE = 10
 
 const STATUSES = [
   'unclaimed', 'in-progress', 'paused', 'submitted', 'in-review',
@@ -45,6 +48,7 @@ export default function AdminWork() {
   const [isSearching, setIsSearching] = useState(false)
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -66,17 +70,22 @@ export default function AdminWork() {
     return p
   }
 
-  const runSearch = useCallback(async (f: Filters) => {
+  const [total, setTotal] = useState(0)
+
+  const runSearch = useCallback(async (f: Filters, p = 1) => {
     setIsSearching(true)
     setError(null)
     setSearched(true)
     try {
-      const params = buildParams(f)
-      const results = await api.tasks.list(Object.keys(params).length ? params : undefined)
-      setTasks(results)
+      const params = { ...buildParams(f), page: String(p), limit: String(PAGE_SIZE) }
+      const result = await api.tasks.list(params)
+      setTasks(result.tasks as Task[])
+      setTotal(result.total)
+      setPage(p)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Search failed')
       setTasks([])
+      setTotal(0)
     } finally { setIsSearching(false) }
   }, [])
 
@@ -176,7 +185,7 @@ export default function AdminWork() {
 
             <div className="flex gap-2">
               <Button
-                onClick={() => runSearch(filters)}
+                onClick={() => runSearch(filters, 1)}
                 disabled={isSearching}
                 className="gap-1.5"
               >
@@ -200,7 +209,7 @@ export default function AdminWork() {
 
         {searched && !isSearching && !error && (
           <>
-            <p className="text-sm text-muted-foreground">{tasks.length} result{tasks.length !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-muted-foreground">{total} result{total !== 1 ? 's' : ''}</p>
             {tasks.length === 0 ? (
               <Card className="border-border bg-card">
                 <CardContent className="flex items-center justify-center py-12">
@@ -243,6 +252,7 @@ export default function AdminWork() {
                     </CardContent>
                   </Card>
                 ))}
+                <PaginationBar page={page} total={total} pageSize={PAGE_SIZE} onPage={p => runSearch(filters, p)} />
               </div>
             )}
           </>

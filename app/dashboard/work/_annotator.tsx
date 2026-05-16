@@ -9,28 +9,43 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TopBar } from '@/components/top-bar'
 import { StatusBadge } from '@/components/status-badge'
+import { PaginationBar } from '@/components/ui/pagination-bar'
 import { api } from '@/lib/api'
 import type { Task } from '@/lib/types'
 
+const PAGE_SIZE = 10
+
 export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {}) {
-  const [tasks, setTasks] = useState<Task[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const [reworkTasks, setReworkTasks] = useState<Task[]>([]);       const [reworkTotal, setReworkTotal] = useState(0);       const [reworkPage, setReworkPage] = useState(1)
+  const [inProgressTasks, setInProgressTasks] = useState<Task[]>([]); const [inProgressTotal, setInProgressTotal] = useState(0); const [inProgressPage, setInProgressPage] = useState(1)
+  const [submittedTasks, setSubmittedTasks] = useState<Task[]>([]);   const [submittedTotal, setSubmittedTotal] = useState(0);   const [submittedPage, setSubmittedPage] = useState(1)
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);   const [completedTotal, setCompletedTotal] = useState(0);   const [completedPage, setCompletedPage] = useState(1)
+
+  const fetchTab = async (status: string, page: number, setter: (t: Task[]) => void, totalSetter: (n: number) => void) => {
+    const r = await api.tasks.list({ mine: 'true', status, page: String(page), limit: String(PAGE_SIZE) })
+    setter(r.tasks as Task[]); totalSetter(r.total)
+  }
+
   useEffect(() => {
-    api.tasks.list({ mine: 'true' })
-      .then(setTasks)
+    Promise.all([
+      fetchTab('revision-requested', reworkPage, setReworkTasks, setReworkTotal),
+      fetchTab('in-progress,paused', inProgressPage, setInProgressTasks, setInProgressTotal),
+      fetchTab('submitted', submittedPage, setSubmittedTasks, setSubmittedTotal),
+      fetchTab('approved,data-ready', completedPage, setCompletedTasks, setCompletedTotal),
+    ])
       .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setIsLoading(false))
   }, [])
 
-  const inProgress = tasks.filter(t => ['in-progress', 'paused'].includes(t.status))
-  const submitted  = tasks.filter(t => t.status === 'submitted')
-  const completed  = tasks.filter(t => ['approved', 'data-ready'].includes(t.status))
-  const needsRework = tasks.filter(t => t.status === 'revision-requested')
+  const needsRework = reworkTasks
+  const inProgress  = inProgressTasks
+  const submitted   = submittedTasks
+  const completed   = completedTasks
 
-  // Auto-focus Needs Rework tab when there are outstanding rework items
-  const defaultTab = needsRework.length > 0 ? 'rework' : 'in-progress'
+  const defaultTab = reworkTotal > 0 ? 'rework' : 'in-progress'
 
   const TaskRow = ({ task, isRework = false }: { task: Task; isRework?: boolean }) => {
     const openTagCount = task.errorTags?.filter(t => t.status === 'open').length ?? 0
@@ -107,12 +122,12 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
         ) : (
           <>
             {/* Rework warning banner */}
-            {needsRework.length > 0 && (
+            {reworkTotal > 0 && (
               <div className="flex items-start gap-3 p-4 rounded-lg bg-warning/10 border border-warning/30">
                 <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-warning">
-                    {needsRework.length} task{needsRework.length !== 1 ? 's' : ''} require{needsRework.length === 1 ? 's' : ''} rework
+                    {reworkTotal} task{reworkTotal !== 1 ? 's' : ''} require{reworkTotal === 1 ? 's' : ''} rework
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     You cannot claim new tasks until all rework is completed.
@@ -127,16 +142,16 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
 
             <Tabs defaultValue={defaultTab} className="space-y-3">
               <TabsList className="bg-card border border-border h-10">
-                {needsRework.length > 0 && (
+                {reworkTotal > 0 && (
                   <TabsTrigger value="rework" className="text-sm text-warning data-[state=active]:text-warning">
                     <AlertTriangle className="h-4 w-4 mr-2" />
-                    Needs Rework ({needsRework.length})
+                    Needs Rework ({reworkTotal})
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="in-progress" className="text-sm">In Progress ({inProgress.length})</TabsTrigger>
-                <TabsTrigger value="submitted" className="text-sm">Submitted ({submitted.length})</TabsTrigger>
-                <TabsTrigger value="completed" className="text-sm">Completed ({completed.length})</TabsTrigger>
-                {needsRework.length === 0 && (
+                <TabsTrigger value="in-progress" className="text-sm">In Progress ({inProgressTotal})</TabsTrigger>
+                <TabsTrigger value="submitted" className="text-sm">Submitted ({submittedTotal})</TabsTrigger>
+                <TabsTrigger value="completed" className="text-sm">Completed ({completedTotal})</TabsTrigger>
+                {reworkTotal === 0 && (
                   <TabsTrigger value="rework" className="text-sm">Needs Rework (0)</TabsTrigger>
                 )}
               </TabsList>
@@ -146,6 +161,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
                   {needsRework.length
                     ? needsRework.map(t => <TaskRow key={t.id} task={t} isRework />)
                     : <Empty label="No tasks needing rework" />}
+                  <PaginationBar page={reworkPage} total={reworkTotal} pageSize={PAGE_SIZE} onPage={p => { setReworkPage(p); fetchTab('revision-requested', p, setReworkTasks, setReworkTotal) }} />
                 </div>
               </TabsContent>
 
@@ -154,6 +170,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
                   {inProgress.length
                     ? inProgress.map(t => <TaskRow key={t.id} task={t} />)
                     : <Empty label="No tasks in progress" />}
+                  <PaginationBar page={inProgressPage} total={inProgressTotal} pageSize={PAGE_SIZE} onPage={p => { setInProgressPage(p); fetchTab('in-progress,paused', p, setInProgressTasks, setInProgressTotal) }} />
                 </div>
               </TabsContent>
 
@@ -162,6 +179,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
                   {submitted.length
                     ? submitted.map(t => <TaskRow key={t.id} task={t} />)
                     : <Empty label="No submitted tasks" />}
+                  <PaginationBar page={submittedPage} total={submittedTotal} pageSize={PAGE_SIZE} onPage={p => { setSubmittedPage(p); fetchTab('submitted', p, setSubmittedTasks, setSubmittedTotal) }} />
                 </div>
               </TabsContent>
 
@@ -170,6 +188,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
                   {completed.length
                     ? completed.map(t => <TaskRow key={t.id} task={t} />)
                     : <Empty label="No completed tasks" />}
+                  <PaginationBar page={completedPage} total={completedTotal} pageSize={PAGE_SIZE} onPage={p => { setCompletedPage(p); fetchTab('approved,data-ready', p, setCompletedTasks, setCompletedTotal) }} />
                 </div>
               </TabsContent>
             </Tabs>

@@ -187,9 +187,9 @@ export const api = {
   },
 
   tasks: {
-    list: (params?: Record<string, string>) => {
+    list: (params?: Record<string, string>): Promise<{ tasks: unknown[]; total: number; page: number; pages: number; limit: number }> => {
       const q = params ? '?' + new URLSearchParams(params).toString() : ''
-      return apiFetch(`/api/tasks${q}`)
+      return apiFetch(`/api/tasks${q}`) as Promise<{ tasks: unknown[]; total: number; page: number; pages: number; limit: number }>
     },
     get: (id: string) => apiFetch(`/api/tasks/${id}`),
     create: (data: Record<string, unknown>) =>

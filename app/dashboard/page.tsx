@@ -63,7 +63,7 @@ function FieldWorkerDashboard() {
         api.tasks.list(taskParam),
         api.reviews.list(),
       ])
-      setAllTasks(fetchedTasks as Task[])
+      setAllTasks((fetchedTasks.tasks ?? []) as Task[])
       setAllReviews(fetchedReviews as Review[])
     } catch { /* noop */ }
     finally { setIsLoading(false) }
@@ -119,7 +119,8 @@ function FieldWorkerDashboard() {
       if (showAnnotate) {
         if (activeTask) { window.location.href = `${basePath}/tasks/${activeTask.id}`; return }
         if (reworkTask) { window.location.href = `${basePath}/tasks/${reworkTask.id}`; return }
-        const unclaimed = await api.tasks.list({ status: 'unclaimed' })
+        const unclaimedRes = await api.tasks.list({ status: 'unclaimed' })
+        const unclaimed = (unclaimedRes.tasks ?? []) as Task[]
         if (!unclaimed.length) { setNoTasks(true); return }
         const pick = unclaimed[Math.floor(Math.random() * unclaimed.length)]
         await api.tasks.action(pick.id, 'claim')

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Search, X } from 'lucide-react'
+import { ExternalLink, Search, X, RefreshCw } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +56,16 @@ export default function AdminWork() {
     }
   }, [isSuperAdmin])
 
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && lastSearch.current) {
+        runSearch(lastSearch.current.f, lastSearch.current.p)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [runSearch])
+
   const set = (k: keyof Filters, v: string) => setFilters(p => ({ ...p, [k]: v }))
 
   const buildParams = (f: Filters): Record<string, string> => {
@@ -71,11 +81,13 @@ export default function AdminWork() {
   }
 
   const [total, setTotal] = useState(0)
+  const lastSearch = useRef<{ f: Filters; p: number } | null>(null)
 
   const runSearch = useCallback(async (f: Filters, p = 1) => {
     setIsSearching(true)
     setError(null)
     setSearched(true)
+    lastSearch.current = { f, p }
     try {
       const params = { ...buildParams(f), page: String(p), limit: String(PAGE_SIZE) }
       const result = await api.tasks.list(params)
@@ -192,10 +204,20 @@ export default function AdminWork() {
                 <Search className="h-4 w-4" />
                 {isSearching ? 'Searching…' : 'Search'}
               </Button>
+              {searched && (
+                <Button
+                  variant="outline"
+                  onClick={() => lastSearch.current && runSearch(lastSearch.current.f, lastSearch.current.p)}
+                  disabled={isSearching}
+                  className="gap-1.5"
+                >
+                  <RefreshCw className="h-4 w-4" />Refresh
+                </Button>
+              )}
               {hasFilters && (
                 <Button
                   variant="outline"
-                  onClick={() => { setFilters(EMPTY); setTasks([]); setSearched(false) }}
+                  onClick={() => { setFilters(EMPTY); setTasks([]); setSearched(false); lastSearch.current = null }}
                   className="gap-1.5"
                 >
                   <X className="h-4 w-4" />Clear

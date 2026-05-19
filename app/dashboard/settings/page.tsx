@@ -93,7 +93,7 @@ export default function SettingsPage() {
       preview: 'bg-gradient-to-br from-white to-zinc-900 border-zinc-400' },
   ]
 
-  const CHROME_EXTENSION_URL = '/labelforge-extension.pem'
+  const CHROME_EXTENSION_URL = '/labelforge-extension.crx'
 
   return (
     <>

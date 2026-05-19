@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bell } from "lucide-react"
+import { Bell, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -21,12 +21,14 @@ import type { Notification } from "@/lib/types"
 interface TopBarProps {
   title: string
   subtitle?: string
+  copyableId?: string
 }
 
-export function TopBar({ title, subtitle }: TopBarProps) {
+export function TopBar({ title, subtitle, copyableId }: TopBarProps) {
   const { user } = useAuth()
   const isFieldWorker = user && ['annotator', 'reviewer', 'reviewer_annotator'].includes(user.role)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!isFieldWorker) {
@@ -36,22 +38,31 @@ export function TopBar({ title, subtitle }: TopBarProps) {
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  // Field workers already have FieldWorkerNav — render a plain page title, not a second nav bar
-  if (isFieldWorker) {
-    return (
-      <div className="px-6 pt-6 pb-4">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
-        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
-      </div>
-    )
+  const handleCopy = () => {
+    if (!copyableId) return
+    navigator.clipboard.writeText(copyableId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-card px-4">
-      <div>
-        <h1 className="text-base font-semibold text-foreground">{title}</h1>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-      </div>
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between bg-background px-4">
+      {copyableId ? (
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Task ID</span>
+            <span className="font-mono text-sm font-semibold tracking-widest text-foreground uppercase select-all leading-tight">{copyableId}</span>
+          </div>
+          <button onClick={handleCopy} className="text-muted-foreground hover:text-foreground transition-colors">
+            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      ) : (
+        <div>
+          <h1 className="text-base font-semibold text-foreground">{title}</h1>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <ThemeToggle />

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { CaptureSessionPanel } from '@/components/capture-session-panel'
 
 type UserRole = 'annotator' | 'reviewer' | 'reviewer_annotator'
 
@@ -114,6 +115,13 @@ export function TaskDashboard({ role = 'annotator' }: { role?: UserRole }) {
         <div className="w-full">
           <h1 className="text-3xl font-bold text-foreground mb-2">{content.title}</h1>
           <p className="text-muted-foreground">{content.subtitle}</p>
+        </div>
+
+        {/* Capture Session Panel */}
+        <div className="w-full">
+          <CaptureSessionPanel
+            defaultTask={`${content.taskType} task — ${content.subtitle}`}
+          />
         </div>
 
         {/* Re-requested Section */}

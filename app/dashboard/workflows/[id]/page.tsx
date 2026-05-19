@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Play, Plus, Upload, Trash2 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TopBar } from '@/components/top-bar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import type { Batch } from '@/lib/types'
@@ -28,6 +28,12 @@ interface WorkflowDetail {
 
 const TASK_TYPES = ['agentic-ai', 'llm-training', 'multimodal', 'evaluation', 'benchmarking', 'preference-ranking', 'red-teaming', 'data-collection']
 
+const batchStatusBadge = (status: string) => {
+  if (status === 'completed') return <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-100 font-normal text-xs rounded-full px-2.5">Completed</Badge>
+  if (status === 'in-progress') return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-100 font-normal text-xs rounded-full px-2.5">In Progress</Badge>
+  return <span className="text-xs text-muted-foreground capitalize">{status}</span>
+}
+
 export default function WorkflowDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
@@ -35,17 +41,14 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Create batch dialog
   const [showBatch, setShowBatch] = useState(false)
   const [newBatch, setNewBatch] = useState({ title: '', description: '', instructions: '', taskType: 'agentic-ai', priority: '0.8', workloadEstimate: '10', deadline: '' })
   const [isCreatingBatch, setIsCreatingBatch] = useState(false)
 
-  // Add single task dialog
   const [addTaskBatch, setAddTaskBatch] = useState<Batch | null>(null)
   const [newTask, setNewTask] = useState({ title: '', description: '', externalUrl: '', estimatedDuration: '30' })
   const [isCreatingTask, setIsCreatingTask] = useState(false)
 
-  // Bulk upload dialog
   const [bulkBatch, setBulkBatch] = useState<Batch | null>(null)
   const [bulkText, setBulkText] = useState('')
   const [bulkFormat, setBulkFormat] = useState<'json' | 'csv'>('json')
@@ -112,7 +115,6 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
         priority: addTaskBatch.priority,
         estimatedDuration: parseInt(newTask.estimatedDuration),
       })
-      // Refresh
       const updated = await api.workflows.get(id)
       setWorkflow(updated)
       setAddTaskBatch(null)
@@ -182,6 +184,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
   if (!workflow) return null
 
   const isAdmin = isClientAdmin(user?.role ?? 'annotator')
+  const canWork = user?.role === 'annotator' || user?.role === 'reviewer'
 
   return (
     <>
@@ -200,51 +203,68 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
 
-        <div className="space-y-4">
-          {workflow.batches.length === 0 ? (
-            <Card className="border-border bg-card">
-              <CardContent className="flex flex-col items-center justify-center py-12 gap-3">
-                <p className="text-muted-foreground">No batches yet</p>
-                {isAdmin && <Button size="sm" onClick={() => setShowBatch(true)}><Plus className="h-4 w-4 mr-1" />Create First Batch</Button>}
-              </CardContent>
-            </Card>
-          ) : (
-            workflow.batches.map(batch => (
-              <Card key={batch.id} className="border-border bg-card">
-                <CardHeader className="pb-2 pt-4 px-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-sm">{batch.title}</CardTitle>
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="w-[300px]">Batch ID</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Tasks</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {workflow.batches.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    No batches yet
+                    {isAdmin && (
+                      <Button size="sm" className="ml-3" onClick={() => setShowBatch(true)}>
+                        <Plus className="h-4 w-4 mr-1" />Create First Batch
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                workflow.batches.map(batch => (
+                  <TableRow key={batch.id}>
+                    <TableCell>
+                      <Link href={`/dashboard/batches/${batch.id}`} className="text-primary hover:underline font-mono text-xs">
+                        {batch.id}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-sm font-medium">{batch.title}</TableCell>
+                    <TableCell>
                       <Badge variant="outline" className="text-[10px]">{batch.taskType}</Badge>
-                      <span className="text-xs text-muted-foreground">{batch.tasksTotal} tasks</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {isAdmin && (
-                        <>
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddTaskBatch(batch)}>
-                            <Plus className="h-3.5 w-3.5" />Task
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{batch.tasksTotal}</TableCell>
+                    <TableCell>{batchStatusBadge(batch.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {isAdmin && (
+                          <>
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setAddTaskBatch(batch)}>
+                              <Plus className="h-3.5 w-3.5" />Task
+                            </Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setBulkBatch(batch)}>
+                              <Upload className="h-3.5 w-3.5" />Bulk
+                            </Button>
+                          </>
+                        )}
+                        {canWork && (
+                          <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartRandomTask(batch.id)}>
+                            <Play className="h-3.5 w-3.5" />Start
                           </Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setBulkBatch(batch)}>
-                            <Upload className="h-3.5 w-3.5" />Bulk
-                          </Button>
-                        </>
-                      )}
-                      {(user?.role === 'annotator' || user?.role === 'reviewer') && (
-                        <Button size="sm" className="h-7 text-xs gap-1" onClick={() => handleStartRandomTask(batch.id)}>
-                          <Play className="h-3.5 w-3.5" />Start
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                {batch.description && (
-                  <CardContent className="px-4 pb-4">
-                    <p className="text-xs text-muted-foreground">{batch.description}</p>
-                  </CardContent>
-                )}
-              </Card>
-            ))
-          )}
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </main>
 
@@ -322,15 +342,12 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
             <DialogDescription>Upload tasks to "{bulkBatch?.title}" via JSON or CSV</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
-            {/* Format toggle */}
             <div className="flex gap-2">
               {(['json', 'csv'] as const).map(f => (
                 <Button key={f} size="sm" variant={bulkFormat === f ? 'default' : 'outline'} className="h-7 text-xs uppercase"
                   onClick={() => { setBulkFormat(f); setBulkText(''); setBulkError('') }}>{f}</Button>
               ))}
             </div>
-
-            {/* Format guide */}
             <div className="p-3 rounded-lg bg-secondary/30 text-xs text-muted-foreground">
               {bulkFormat === 'json' ? (
                 <>
@@ -348,7 +365,6 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                 </>
               )}
             </div>
-
             <Textarea
               value={bulkText}
               onChange={e => { setBulkText(e.target.value); setBulkError('') }}
@@ -357,8 +373,6 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                 ? '[{"title": "...", "externalUrl": "https://...", "estimatedDuration": 30}]'
                 : 'title,externalUrl,estimatedDuration\nTask 1,https://example.com,30'}
             />
-
-            {/* Metadata applied to all tasks in this upload */}
             <div>
               <p className="text-xs font-medium text-foreground mb-2">Metadata (applied to all tasks in this upload)</p>
               <div className="grid grid-cols-3 gap-3">
@@ -386,7 +400,6 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
             </div>
-
             {bulkError && <p className="text-destructive text-xs">{bulkError}</p>}
           </div>
           <DialogFooter>

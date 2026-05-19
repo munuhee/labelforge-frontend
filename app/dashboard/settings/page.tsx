@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock, Palette, Download, Sun, Moon, Monitor, Eye, EyeOff, ShieldCheck, Chrome, Globe } from 'lucide-react'
+import { Lock, Palette, Download, Sun, Moon, Monitor, Eye, EyeOff, ShieldCheck, Chrome } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -93,10 +93,7 @@ export default function SettingsPage() {
       preview: 'bg-gradient-to-br from-white to-zinc-900 border-zinc-400' },
   ]
 
-  const browsers = [
-    { label: 'Chrome',  icon: Chrome, href: '#' },
-    { label: 'Firefox', icon: Globe,  href: '#' },
-  ]
+  const CHROME_EXTENSION_URL = '/labelforge-extension.pem'
 
   return (
     <>
@@ -200,21 +197,27 @@ export default function SettingsPage() {
             {/* Browser Extension */}
             <Section icon={Download} title="Browser Extension" description="Install the LabelForge extension to capture screenshots and track activity during Agentic AI tasks.">
               <div className="flex gap-3 flex-wrap">
-                {browsers.map(b => (
-                  <a
-                    key={b.label}
-                    href={b.href}
-                    className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-muted-foreground/30 transition-all text-sm font-medium group"
-                  >
-                    <b.icon className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                    <span>{b.label}</span>
-                    <Download className="h-3 w-3 text-muted-foreground ml-1 group-hover:text-foreground transition-colors" />
-                  </a>
-                ))}
+                <a
+                  href={CHROME_EXTENSION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-border bg-secondary/30 hover:bg-secondary/60 hover:border-muted-foreground/30 transition-all text-sm font-medium group"
+                >
+                  <Chrome className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  <span>Add to Chrome</span>
+                  <Download className="h-3 w-3 text-muted-foreground ml-1 group-hover:text-foreground transition-colors" />
+                </a>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-3">
-                Compatible with Chrome 88+ and Firefox 85+
-              </p>
+              <div className="mt-3 space-y-1">
+                <p className="text-[10px] text-muted-foreground">Compatible with Chrome 88+</p>
+                <ol className="text-[10px] text-muted-foreground space-y-0.5 list-decimal list-inside">
+                  <li>Download the file above</li>
+                  <li>Open <span className="font-mono">chrome://extensions</span> in Chrome</li>
+                  <li>Enable <strong>Developer mode</strong> (top-right toggle)</li>
+                  <li>Drag and drop the downloaded <span className="font-mono">.crx</span> file onto the page</li>
+                  <li>To use in Incognito: click <strong>Details</strong> on the extension, then enable <strong>Allow in incognito</strong></li>
+                </ol>
+              </div>
             </Section>
 
           </div>

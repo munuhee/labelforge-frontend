@@ -227,6 +227,8 @@ export interface Task {
   submittedAt?: string
   signedOffAt?: string
   createdAt?: string
+  attemptStartedAt?: string
+  attemptDurations?: number[]
   review?: TaskReview | null
 }
 
@@ -238,6 +240,8 @@ export interface TaskReview {
   qualityScore?: number
   criteriaScores?: { accuracy: number; completeness: number; adherence: number }
   reviewerName?: string
+  submittedAt?: string
+  reviewStartedAt?: string
   reviewedAt?: string
 }
 
@@ -264,6 +268,7 @@ export interface Review {
   qualityScore?: number
   criteriaScores?: { accuracy: number; completeness: number; adherence: number }
   submittedAt: string
+  reviewStartedAt?: string
   reviewedAt?: string
   errorTags?: ErrorTag[]
 }

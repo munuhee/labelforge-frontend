@@ -212,6 +212,8 @@ export const api = {
       apiFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'remove-error-tag', tagId }) }),
     resolveErrorTag: (id: string, tagId: string) =>
       apiFetch(`/api/tasks/${id}`, { method: 'PATCH', body: JSON.stringify({ action: 'resolve-error-tag', tagId }) }),
+    saveExtensionData: (id: string, extensionData: Record<string, unknown>, screenshots: string[]) =>
+      apiFetch(`/api/tasks/${id}/extension-data`, { method: 'POST', body: JSON.stringify({ extensionData, screenshots }) }),
     bulkImport: (batchId: string, tasks: Record<string, unknown>[], metadata?: Record<string, unknown>): Promise<{ created: number; errors: number; errorDetails: { index: number; error: string }[]; taskIds: string[] }> =>
       apiFetch('/api/tasks/bulk', { method: 'POST', body: JSON.stringify({ batchId, tasks, metadata }) })
         .then(r => { _bust('/api/tasks'); _bust('/api/batches'); _bust('/api/analytics'); return r as { created: number; errors: number; errorDetails: { index: number; error: string }[]; taskIds: string[] } }),

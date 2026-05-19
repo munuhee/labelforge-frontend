@@ -2,22 +2,35 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Clock, ExternalLink, CheckCircle, Play, Pause } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Play, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { TopBar } from '@/components/top-bar'
-import { StatusBadge, PriorityBadge, TaskTypeBadge } from '@/components/status-badge'
-import { PaginationBar } from '@/components/ui/pagination-bar'
+import { PriorityBadge, TaskTypeBadge } from '@/components/status-badge'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth-context'
 import type { Batch, Task } from '@/lib/types'
 import { isClientAdmin } from '@/lib/types'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 50
 
 interface BatchDetail extends Batch {
   instructions?: string
   tasks: Task[]
+}
+
+const statusBadge = (status: string) => {
+  if (status === 'approved' || status === 'data-ready')
+    return <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-100 font-normal text-xs rounded-full px-2.5">Approved</Badge>
+  if (status === 'submitted')
+    return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-100 font-normal text-xs rounded-full px-2.5">Submitted</Badge>
+  if (status === 'in-progress')
+    return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 font-normal text-xs rounded-full px-2.5">In Progress</Badge>
+  if (status === 'unclaimed')
+    return <span className="text-xs text-muted-foreground">Unclaimed</span>
+  return <span className="text-xs text-muted-foreground capitalize">{status.replace(/-/g, ' ')}</span>
 }
 
 export default function BatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,16 +54,14 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
       <main className="flex-1 flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></main>
     </>
   )
-
   if (error) return (
     <>
       <TopBar title="Batch" />
       <main className="flex-1 flex items-center justify-center">
-        <div className="flex items-center justify-center py-12 text-destructive text-sm">{error}</div>
+        <div className="text-destructive text-sm">{error}</div>
       </main>
     </>
   )
-
   if (!batch) return (
     <>
       <TopBar title="Batch Not Found" />
@@ -66,7 +77,12 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
   const myTasks = user?.role === 'annotator'
     ? batch.tasks.filter(t => t.annotatorId === user.id)
     : batch.tasks
-  const paginatedTasks = myTasks.slice((taskPage - 1) * PAGE_SIZE, taskPage * PAGE_SIZE)
+
+  const total = myTasks.length
+  const from = total === 0 ? 0 : Math.min((taskPage - 1) * PAGE_SIZE + 1, total)
+  const to = Math.min(taskPage * PAGE_SIZE, total)
+  const pages = Math.ceil(total / PAGE_SIZE)
+  const paged = myTasks.slice((taskPage - 1) * PAGE_SIZE, taskPage * PAGE_SIZE)
 
   return (
     <>
@@ -85,75 +101,93 @@ export default function BatchDetailPage({ params }: { params: Promise<{ id: stri
               <CardHeader>
                 <div className="flex items-center gap-2 mb-2">
                   <TaskTypeBadge type={batch.taskType} />
-                  <StatusBadge status={batch.status} />
                 </div>
                 <CardTitle>{batch.title}</CardTitle>
                 <CardDescription>{batch.description}</CardDescription>
               </CardHeader>
-              <CardContent>
-                {batch.instructions && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Instructions</h4>
-                    <pre className="text-sm text-muted-foreground whitespace-pre-wrap bg-secondary/30 rounded-lg p-3">
-                      {batch.instructions}
-                    </pre>
-                  </div>
-                )}
-              </CardContent>
+              {batch.instructions && (
+                <CardContent>
+                  <h4 className="text-sm font-medium mb-2">Instructions</h4>
+                  <pre className="text-sm text-muted-foreground whitespace-pre-wrap bg-secondary/30 rounded-lg p-3">
+                    {batch.instructions}
+                  </pre>
+                </CardContent>
+              )}
             </Card>
 
-            {/* Tasks */}
-            {myTasks.length === 0 ? (
-              <Card className="border-border bg-card">
-                <CardContent className="flex items-center justify-center py-12">
-                  <p className="text-muted-foreground">No tasks available</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-2">
-                <h3 className="text-sm font-semibold">Tasks ({myTasks.length})</h3>
-                {paginatedTasks.map(task => (
-                  <Card key={task.id} className="border-border bg-card hover:border-primary/50 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <PriorityBadge priority={task.priority} />
-                            <h4 className="font-medium text-foreground truncate">{task.title}</h4>
-                            <StatusBadge status={task.status} />
-                          </div>
-                          <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />~{task.estimatedDuration}m</span>
-                            {task.qualityScore && <span className="text-success">Score: {task.qualityScore}%</span>}
-                            {isClientAdmin(user?.role ?? 'annotator') && task.annotatorEmail && <span>Annotator: {task.annotatorEmail}</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {task.externalUrl && (
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={task.externalUrl} target="_blank"><ExternalLink className="h-4 w-4 mr-1" />Open</Link>
-                            </Button>
-                          )}
-                          <Button size="sm" asChild>
-                            <Link href={`/dashboard/tasks/${task.id}`}>
-                              {task.status === 'in-progress' ? (
-                                <><Pause className="h-4 w-4 mr-1" />Continue</>
-                              ) : task.status === 'unclaimed' ? (
-                                <><Play className="h-4 w-4 mr-1" />Start</>
-                              ) : (
-                                <><CheckCircle className="h-4 w-4 mr-1" />View</>
-                              )}
+            {/* Tasks Table */}
+            <div>
+              <h3 className="text-sm font-semibold mb-3">Tasks ({total})</h3>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableHead className="w-[300px]">Task ID</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="w-[100px]">Est.</TableHead>
+                      <TableHead>Status</TableHead>
+                      {isClientAdmin(user?.role ?? 'annotator') && <TableHead>Annotator</TableHead>}
+                      <TableHead>Quality</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paged.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">No tasks available</TableCell>
+                      </TableRow>
+                    ) : (
+                      paged.map(task => (
+                        <TableRow key={task.id}>
+                          <TableCell>
+                            <Link href={`/dashboard/tasks/${task.id}`} className="text-primary hover:underline font-mono text-xs">
+                              {task.id}
                             </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                <PaginationBar page={taskPage} total={myTasks.length} pageSize={PAGE_SIZE} onPage={setTaskPage} />
+                          </TableCell>
+                          <TableCell><PriorityBadge priority={task.priority} /></TableCell>
+                          <TableCell className="text-sm text-muted-foreground">~{task.estimatedDuration}m</TableCell>
+                          <TableCell>{statusBadge(task.status)}</TableCell>
+                          {isClientAdmin(user?.role ?? 'annotator') && (
+                            <TableCell className="text-xs text-muted-foreground">{task.annotatorEmail || '—'}</TableCell>
+                          )}
+                          <TableCell className="text-sm font-medium text-green-600">
+                            {task.qualityScore ? `${task.qualityScore}%` : '—'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {task.externalUrl && (
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" asChild>
+                                  <Link href={task.externalUrl} target="_blank"><ExternalLink className="h-3.5 w-3.5" /></Link>
+                                </Button>
+                              )}
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" asChild>
+                                <Link href={`/dashboard/tasks/${task.id}`}>
+                                  {task.status === 'in-progress' ? 'Continue' : task.status === 'unclaimed' ? <><Play className="h-3.5 w-3.5 mr-1" />Start</> : 'View'}
+                                </Link>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+                <div className="flex items-center justify-between px-4 py-2 border-t bg-background">
+                  <span className="text-xs text-muted-foreground">{from} - {to} of {total} rows</span>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={taskPage === 1} onClick={() => setTaskPage(p => p - 1)}>
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={taskPage === pages || pages === 0} onClick={() => setTaskPage(p => p + 1)}>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setTaskPage(1)}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Sidebar */}

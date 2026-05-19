@@ -2,20 +2,20 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Search, X, RefreshCw } from 'lucide-react'
+import { ExternalLink, Search, X, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TopBar } from '@/components/top-bar'
-import { StatusBadge } from '@/components/status-badge'
-import { PaginationBar } from '@/components/ui/pagination-bar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import type { Task, Client } from '@/lib/types'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 50
 
 const STATUSES = [
   'unclaimed', 'in-progress', 'paused', 'submitted', 'in-review',
@@ -35,6 +35,22 @@ type Filters = {
 const EMPTY: Filters = {
   workflow: '', annotatorEmail: '', reviewerEmail: '',
   status: '', dateFrom: '', dateTo: '', clientId: '',
+}
+
+const statusBadge = (status: string) => {
+  if (status === 'approved' || status === 'data-ready')
+    return <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-100 font-normal text-xs rounded-full px-2.5">Approved</Badge>
+  if (status === 'submitted')
+    return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-100 font-normal text-xs rounded-full px-2.5">Submitted</Badge>
+  if (status === 'in-review')
+    return <Badge className="bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-100 font-normal text-xs rounded-full px-2.5">In Review</Badge>
+  if (status === 'in-progress')
+    return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 font-normal text-xs rounded-full px-2.5">In Progress</Badge>
+  if (status === 'rejected')
+    return <Badge className="bg-red-100 text-red-700 border border-red-200 hover:bg-red-100 font-normal text-xs rounded-full px-2.5">Rejected</Badge>
+  if (status === 'revision-requested')
+    return <Badge className="bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-100 font-normal text-xs rounded-full px-2.5">Revision Needed</Badge>
+  return <span className="text-xs text-muted-foreground capitalize">{status.replace(/-/g, ' ')}</span>
 }
 
 export default function AdminWork() {
@@ -102,6 +118,10 @@ export default function AdminWork() {
 
   const hasFilters = Object.values(filters).some(v => v !== '')
 
+  const from = total === 0 ? 0 : Math.min((page - 1) * PAGE_SIZE + 1, total)
+  const to = Math.min(page * PAGE_SIZE, total)
+  const pages = Math.ceil(total / PAGE_SIZE)
+
   return (
     <>
       <TopBar title="Work" subtitle="Filter and browse tasks across all workflows" />
@@ -111,8 +131,6 @@ export default function AdminWork() {
         <Card className="border-border bg-card">
           <CardContent className="p-4 space-y-4">
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-
-              {/* Workspace — super admin only */}
               {isSuperAdmin && (
                 <div className="sm:col-span-2 lg:col-span-3">
                   <Label className="text-xs mb-1 block">Workspace</Label>
@@ -129,96 +147,48 @@ export default function AdminWork() {
                   </Select>
                 </div>
               )}
-
               <div>
                 <Label className="text-xs mb-1 block">Workflow</Label>
-                <Input
-                  placeholder="e.g. agentic-ai"
-                  value={filters.workflow}
-                  onChange={e => set('workflow', e.target.value)}
-                  className="h-9 text-sm bg-secondary/30"
-                />
+                <Input placeholder="e.g. agentic-ai" value={filters.workflow} onChange={e => set('workflow', e.target.value)} className="h-9 text-sm bg-secondary/30" />
               </div>
-
               <div>
                 <Label className="text-xs mb-1 block">Status</Label>
                 <Select value={filters.status || 'all'} onValueChange={v => set('status', v === 'all' ? '' : v)}>
                   <SelectTrigger className="h-9 text-sm bg-secondary/30"><SelectValue placeholder="Any status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Any status</SelectItem>
-                    {STATUSES.map(s => (
-                      <SelectItem key={s} value={s}>{s.replace(/-/g, ' ')}</SelectItem>
-                    ))}
+                    {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/-/g, ' ')}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-
               <div>
                 <Label className="text-xs mb-1 block">Annotator Email</Label>
-                <Input
-                  placeholder="annotator@company.com"
-                  value={filters.annotatorEmail}
-                  onChange={e => set('annotatorEmail', e.target.value)}
-                  className="h-9 text-sm bg-secondary/30"
-                />
+                <Input placeholder="annotator@company.com" value={filters.annotatorEmail} onChange={e => set('annotatorEmail', e.target.value)} className="h-9 text-sm bg-secondary/30" />
               </div>
-
               <div>
                 <Label className="text-xs mb-1 block">Reviewer Email</Label>
-                <Input
-                  placeholder="reviewer@company.com"
-                  value={filters.reviewerEmail}
-                  onChange={e => set('reviewerEmail', e.target.value)}
-                  className="h-9 text-sm bg-secondary/30"
-                />
+                <Input placeholder="reviewer@company.com" value={filters.reviewerEmail} onChange={e => set('reviewerEmail', e.target.value)} className="h-9 text-sm bg-secondary/30" />
               </div>
-
               <div>
                 <Label className="text-xs mb-1 block">Date From</Label>
-                <Input
-                  type="date"
-                  value={filters.dateFrom}
-                  onChange={e => set('dateFrom', e.target.value)}
-                  className="h-9 text-sm bg-secondary/30"
-                />
+                <Input type="date" value={filters.dateFrom} onChange={e => set('dateFrom', e.target.value)} className="h-9 text-sm bg-secondary/30" />
               </div>
-
               <div>
                 <Label className="text-xs mb-1 block">Date To</Label>
-                <Input
-                  type="date"
-                  value={filters.dateTo}
-                  onChange={e => set('dateTo', e.target.value)}
-                  className="h-9 text-sm bg-secondary/30"
-                />
+                <Input type="date" value={filters.dateTo} onChange={e => set('dateTo', e.target.value)} className="h-9 text-sm bg-secondary/30" />
               </div>
             </div>
-
             <div className="flex gap-2">
-              <Button
-                onClick={() => runSearch(filters, 1)}
-                disabled={isSearching}
-                className="gap-1.5"
-              >
-                <Search className="h-4 w-4" />
-                {isSearching ? 'Searching…' : 'Search'}
+              <Button onClick={() => runSearch(filters, 1)} disabled={isSearching} className="gap-1.5">
+                <Search className="h-4 w-4" />{isSearching ? 'Searching…' : 'Search'}
               </Button>
               {searched && (
-                <Button
-                  variant="outline"
-                  onClick={() => lastSearch.current && runSearch(lastSearch.current.f, lastSearch.current.p)}
-                  disabled={isSearching}
-                  className="gap-1.5"
-                >
+                <Button variant="outline" onClick={() => lastSearch.current && runSearch(lastSearch.current.f, lastSearch.current.p)} disabled={isSearching} className="gap-1.5">
                   <RefreshCw className="h-4 w-4" />Refresh
                 </Button>
               )}
               {hasFilters && (
-                <Button
-                  variant="outline"
-                  onClick={() => { setFilters(EMPTY); setTasks([]); setSearched(false); lastSearch.current = null }}
-                  className="gap-1.5"
-                >
+                <Button variant="outline" onClick={() => { setFilters(EMPTY); setTasks([]); setSearched(false); lastSearch.current = null }} className="gap-1.5">
                   <X className="h-4 w-4" />Clear
                 </Button>
               )}
@@ -229,54 +199,84 @@ export default function AdminWork() {
         {error && <div className="text-destructive text-sm text-center py-4">{error}</div>}
 
         {searched && !isSearching && !error && (
-          <>
-            <p className="text-sm text-muted-foreground">{total} result{total !== 1 ? 's' : ''}</p>
-            {tasks.length === 0 ? (
-              <Card className="border-border bg-card">
-                <CardContent className="flex items-center justify-center py-12">
-                  <p className="text-base text-muted-foreground">No tasks match these filters</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {tasks.map(task => (
-                  <Card key={task.id} className="border-border bg-card">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <Link href={`${basePath}/tasks/${task.id}`} className="font-medium text-base text-foreground hover:text-primary truncate">
-                              {task.title}
-                            </Link>
-                            <StatusBadge status={task.status} />
-                          </div>
-                          <p className="text-sm text-muted-foreground truncate mt-1">{task.workflowName} › {task.batchTitle}</p>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2 flex-wrap">
-                            {task.annotatorEmail && <span>Annotator: {task.annotatorEmail}</span>}
-                            {task.reviewerEmail && <span>Reviewer: {task.reviewerEmail}</span>}
-                            {task.submittedAt && <span>Submitted: {new Date(task.submittedAt).toLocaleDateString()}</span>}
-                            {task.qualityScore && <span className="text-success font-medium">Quality: {task.qualityScore}%</span>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                  <TableHead className="w-[300px]">Task ID</TableHead>
+                  <TableHead>Workflow › Batch</TableHead>
+                  <TableHead className="w-[160px]">Created at</TableHead>
+                  <TableHead className="w-[160px]">Submitted</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Annotator</TableHead>
+                  <TableHead>Reviewer</TableHead>
+                  <TableHead>Quality</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tasks.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                      No tasks match these filters
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  tasks.map(task => (
+                    <TableRow key={task.id}>
+                      <TableCell>
+                        <Link href={`${basePath}/tasks/${task.id}`} className="text-primary hover:underline font-mono text-xs">
+                          {task.id}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {task.workflowName} › {task.batchTitle}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {task.createdAt ? new Date(task.createdAt).toLocaleString() : '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {task.submittedAt ? new Date(task.submittedAt).toLocaleString() : '—'}
+                      </TableCell>
+                      <TableCell>{statusBadge(task.status)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{task.annotatorEmail || '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{task.reviewerEmail || '—'}</TableCell>
+                      <TableCell className="text-sm font-medium text-green-600">
+                        {task.qualityScore ? `${task.qualityScore}%` : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
                           {task.externalUrl && (
-                            <Button size="icon" variant="ghost" className="h-9 w-9"
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
                               onClick={() => window.open(task.externalUrl, '_blank', 'noopener,noreferrer')}>
-                              <ExternalLink className="h-4 w-4" />
+                              <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button size="sm" className="h-9 px-4 text-sm" asChild>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" asChild>
                             <Link href={`${basePath}/tasks/${task.id}`}>View</Link>
                           </Button>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                <PaginationBar page={page} total={total} pageSize={PAGE_SIZE} onPage={p => runSearch(filters, p)} />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <div className="flex items-center justify-between px-4 py-2 border-t bg-background">
+              <span className="text-xs text-muted-foreground">{from} - {to} of {total} rows</span>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === 1} onClick={() => runSearch(filters, page - 1)}>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === pages || pages === 0} onClick={() => runSearch(filters, page + 1)}>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { setFilters(EMPTY); setTasks([]); setSearched(false); lastSearch.current = null }}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
               </div>
-            )}
-          </>
+            </div>
+          </div>
         )}
 
         {!searched && !isSearching && (

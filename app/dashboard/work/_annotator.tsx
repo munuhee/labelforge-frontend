@@ -2,18 +2,51 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ExternalLink, Wrench, Tag } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+import { AlertTriangle, ExternalLink, Wrench, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TopBar } from '@/components/top-bar'
-import { StatusBadge } from '@/components/status-badge'
-import { PaginationBar } from '@/components/ui/pagination-bar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/lib/api'
 import type { Task } from '@/lib/types'
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 50
+
+const statusBadge = (status: string) => {
+  if (status === 'approved' || status === 'data-ready')
+    return <Badge className="bg-green-100 text-green-700 border border-green-200 hover:bg-green-100 font-normal text-xs rounded-full px-2.5">Approved</Badge>
+  if (status === 'submitted')
+    return <Badge className="bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-100 font-normal text-xs rounded-full px-2.5">Submitted</Badge>
+  if (status === 'in-progress')
+    return <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200 hover:bg-yellow-100 font-normal text-xs rounded-full px-2.5">In Progress</Badge>
+  if (status === 'revision-requested')
+    return <Badge className="bg-red-100 text-red-700 border border-red-200 hover:bg-red-100 font-normal text-xs rounded-full px-2.5">Needs Rework</Badge>
+  return <span className="text-xs text-muted-foreground capitalize">{status.replace(/-/g, ' ')}</span>
+}
+
+const TablePager = ({ rows, page, setPage }: { rows: Task[]; page: number; setPage: (p: number) => void }) => {
+  const total = rows.length
+  const from = total === 0 ? 0 : Math.min((page - 1) * PAGE_SIZE + 1, total)
+  const to = Math.min(page * PAGE_SIZE, total)
+  const pages = Math.ceil(total / PAGE_SIZE)
+  return (
+    <div className="flex items-center justify-between px-4 py-2 border-t bg-background">
+      <span className="text-xs text-muted-foreground">{from} - {to} of {total} rows</span>
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === 1} onClick={() => setPage(page - 1)}>
+          <ChevronLeft className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={page === pages || pages === 0} onClick={() => setPage(page + 1)}>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setPage(1)}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {}) {
   const [isLoading, setIsLoading] = useState(true)
@@ -40,76 +73,89 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
       .finally(() => setIsLoading(false))
   }, [])
 
-  const needsRework = reworkTasks
-  const inProgress  = inProgressTasks
-  const submitted   = submittedTasks
-  const completed   = completedTasks
-
   const defaultTab = reworkTotal > 0 ? 'rework' : 'in-progress'
 
-  const TaskRow = ({ task, isRework = false }: { task: Task; isRework?: boolean }) => {
-    const openTagCount = task.errorTags?.filter(t => t.status === 'open').length ?? 0
+  const TaskTable = ({
+    rows, page, setPage, isRework = false,
+  }: { rows: Task[]; page: number; setPage: (p: number) => void; isRework?: boolean }) => {
+    const paged = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
     return (
-      <Card className={`border-border bg-card ${isRework ? 'border-l-2 border-l-warning' : ''}`}>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <Link href={`/dashboard/tasks/${task.id}`}
-                className="font-medium text-base text-foreground hover:text-primary truncate block">
-                {task.title}
-              </Link>
-              <p className="text-sm text-muted-foreground truncate mt-1">{task.batchTitle}</p>
-              {task.submittedAt && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Submitted {new Date(task.submittedAt).toLocaleDateString()}
-                </p>
-              )}
-              {/* Error tag summary */}
-              {isRework && openTagCount > 0 && (
-                <div className="flex items-center gap-2 mt-2">
-                  <Tag className="h-4 w-4 text-warning" />
-                  <span className="text-sm text-warning font-medium">
-                    {openTagCount} open error tag{openTagCount !== 1 ? 's' : ''} from reviewer
-                  </span>
-                </div>
-              )}
-            </div>
-            {task.qualityScore != null && (
-              <span className="text-lg font-medium text-success shrink-0">{task.qualityScore}%</span>
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-[300px]">Task ID</TableHead>
+              <TableHead>Batch</TableHead>
+              <TableHead className="w-[160px]">Submitted</TableHead>
+              <TableHead>Status</TableHead>
+              {isRework && <TableHead>Error Tags</TableHead>}
+              <TableHead>Quality</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paged.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={isRework ? 7 : 6} className="text-center py-12 text-muted-foreground">
+                  No tasks found
+                </TableCell>
+              </TableRow>
+            ) : (
+              paged.map(task => {
+                const openTagCount = task.errorTags?.filter(t => t.status === 'open').length ?? 0
+                return (
+                  <TableRow key={task.id} className={isRework ? 'border-l-2 border-l-yellow-400' : ''}>
+                    <TableCell>
+                      <Link href={`/dashboard/tasks/${task.id}`} className="text-primary hover:underline font-mono text-xs">
+                        {task.id}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-sm">{task.batchTitle}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {task.submittedAt ? new Date(task.submittedAt).toLocaleString() : '—'}
+                    </TableCell>
+                    <TableCell>{statusBadge(task.status)}</TableCell>
+                    {isRework && (
+                      <TableCell>
+                        {openTagCount > 0
+                          ? <span className="text-xs text-yellow-600 font-medium">{openTagCount} open</span>
+                          : <span className="text-xs text-muted-foreground">—</span>}
+                      </TableCell>
+                    )}
+                    <TableCell className="text-sm font-medium text-green-600">
+                      {task.qualityScore != null ? `${task.qualityScore}%` : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {task.externalUrl && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
+                            onClick={() => window.open(task.externalUrl, '_blank', 'noopener,noreferrer')}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {isRework ? (
+                          <Button size="sm" className="h-7 text-xs gap-1 bg-yellow-500 text-black hover:bg-yellow-400" asChild>
+                            <Link href={`/dashboard/tasks/${task.id}`}>
+                              <Wrench className="h-3.5 w-3.5" />Fix
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" asChild>
+                            <Link href={`/dashboard/tasks/${task.id}`}>View</Link>
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
-            <StatusBadge status={task.status} />
-            <div className="flex items-center gap-2 shrink-0">
-              {task.externalUrl && (
-                <Button size="icon" variant="ghost" className="h-9 w-9"
-                  onClick={() => window.open(task.externalUrl, '_blank', 'noopener,noreferrer')}>
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
-              {isRework ? (
-                <Button className="h-9 px-4 text-sm gap-2 bg-warning text-black hover:bg-warning/90" asChild>
-                  <Link href={`/dashboard/tasks/${task.id}`}>
-                    <Wrench className="h-4 w-4" />Fix
-                  </Link>
-                </Button>
-              ) : (
-                <Button size="sm" className="h-9 px-4 text-sm" asChild>
-                  <Link href={`/dashboard/tasks/${task.id}`}>View</Link>
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </TableBody>
+        </Table>
+        <TablePager rows={rows} page={page} setPage={setPage} />
+      </div>
     )
   }
-
-  const Empty = ({ label }: { label: string }) => (
-    <Card className="border-border bg-card">
-      <CardContent className="flex items-center justify-center py-12">
-        <p className="text-base text-muted-foreground">{label}</p>
-      </CardContent>
-    </Card>
-  )
 
   return (
     <>
@@ -121,21 +167,19 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
           <div className="flex items-center justify-center py-12 text-destructive text-sm">{error}</div>
         ) : (
           <>
-            {/* Rework warning banner */}
             {reworkTotal > 0 && (
-              <div className="flex items-start gap-3 p-4 rounded-lg bg-warning/10 border border-warning/30">
-                <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 rounded-lg bg-yellow-50 border border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-900/40">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-warning">
+                  <p className="text-sm font-semibold text-yellow-700 dark:text-yellow-400">
                     {reworkTotal} task{reworkTotal !== 1 ? 's' : ''} require{reworkTotal === 1 ? 's' : ''} rework
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     You cannot claim new tasks until all rework is completed.
-                    {inProgress.length > 0 && ' You may finish your current in-progress task first.'}
                   </p>
                 </div>
-                <Badge variant="outline" className="text-warning border-warning/30 text-xs shrink-0">
-                  {needsRework.length} pending
+                <Badge variant="outline" className="text-yellow-600 border-yellow-300 text-xs shrink-0">
+                  {reworkTotal} pending
                 </Badge>
               </div>
             )}
@@ -143,7 +187,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
             <Tabs defaultValue={defaultTab} className="space-y-3">
               <TabsList className="bg-card border border-border h-10">
                 {reworkTotal > 0 && (
-                  <TabsTrigger value="rework" className="text-sm text-warning data-[state=active]:text-warning">
+                  <TabsTrigger value="rework" className="text-sm text-yellow-600 data-[state=active]:text-yellow-600">
                     <AlertTriangle className="h-4 w-4 mr-2" />
                     Needs Rework ({reworkTotal})
                   </TabsTrigger>
@@ -157,39 +201,16 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
               </TabsList>
 
               <TabsContent value="rework">
-                <div className="space-y-3">
-                  {needsRework.length
-                    ? needsRework.map(t => <TaskRow key={t.id} task={t} isRework />)
-                    : <Empty label="No tasks needing rework" />}
-                  <PaginationBar page={reworkPage} total={reworkTotal} pageSize={PAGE_SIZE} onPage={p => { setReworkPage(p); fetchTab('revision-requested', p, setReworkTasks, setReworkTotal) }} />
-                </div>
+                <TaskTable rows={reworkTasks} page={reworkPage} setPage={p => { setReworkPage(p); fetchTab('revision-requested', p, setReworkTasks, setReworkTotal) }} isRework />
               </TabsContent>
-
               <TabsContent value="in-progress">
-                <div className="space-y-3">
-                  {inProgress.length
-                    ? inProgress.map(t => <TaskRow key={t.id} task={t} />)
-                    : <Empty label="No tasks in progress" />}
-                  <PaginationBar page={inProgressPage} total={inProgressTotal} pageSize={PAGE_SIZE} onPage={p => { setInProgressPage(p); fetchTab('in-progress,paused', p, setInProgressTasks, setInProgressTotal) }} />
-                </div>
+                <TaskTable rows={inProgressTasks} page={inProgressPage} setPage={p => { setInProgressPage(p); fetchTab('in-progress,paused', p, setInProgressTasks, setInProgressTotal) }} />
               </TabsContent>
-
               <TabsContent value="submitted">
-                <div className="space-y-3">
-                  {submitted.length
-                    ? submitted.map(t => <TaskRow key={t.id} task={t} />)
-                    : <Empty label="No submitted tasks" />}
-                  <PaginationBar page={submittedPage} total={submittedTotal} pageSize={PAGE_SIZE} onPage={p => { setSubmittedPage(p); fetchTab('submitted', p, setSubmittedTasks, setSubmittedTotal) }} />
-                </div>
+                <TaskTable rows={submittedTasks} page={submittedPage} setPage={p => { setSubmittedPage(p); fetchTab('submitted', p, setSubmittedTasks, setSubmittedTotal) }} />
               </TabsContent>
-
               <TabsContent value="completed">
-                <div className="space-y-3">
-                  {completed.length
-                    ? completed.map(t => <TaskRow key={t.id} task={t} />)
-                    : <Empty label="No completed tasks" />}
-                  <PaginationBar page={completedPage} total={completedTotal} pageSize={PAGE_SIZE} onPage={p => { setCompletedPage(p); fetchTab('approved,data-ready', p, setCompletedTasks, setCompletedTotal) }} />
-                </div>
+                <TaskTable rows={completedTasks} page={completedPage} setPage={p => { setCompletedPage(p); fetchTab('approved,data-ready', p, setCompletedTasks, setCompletedTotal) }} />
               </TabsContent>
             </Tabs>
           </>

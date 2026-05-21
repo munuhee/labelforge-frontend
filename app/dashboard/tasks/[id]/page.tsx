@@ -20,7 +20,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { TopBar } from '@/components/top-bar'
+import { TopBar, FieldPageHeader } from '@/components/top-bar'
 import { StatusBadge, TaskTypeBadge } from '@/components/status-badge'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
@@ -121,6 +121,7 @@ const TAG_DEFAULTS: Record<string, number> = { minor: 5, major: 20 }
 export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user } = useAuth()
+  const isFieldWorker = user ? ['annotator', 'reviewer', 'reviewer_annotator'].includes(user.role) : false
   const [task, setTask] = useState<Task | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -325,11 +326,16 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }
 
 
+  const PageHeader = ({ title, copyableId }: { title: string; copyableId?: string }) =>
+    isFieldWorker
+      ? <FieldPageHeader title={title} copyableId={copyableId} />
+      : <TopBar title={title} copyableId={copyableId} />
+
   if (isLoading) return (
-    <><TopBar title="Loading..." /><main className="flex-1 flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></main></>
+    <><PageHeader title="Loading..." /><main className="flex-1 flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></main></>
   )
   if (error) return (
-    <><TopBar title="Task" /><main className="flex-1 flex items-center justify-center"><div className="text-destructive text-sm">{error}</div></main></>
+    <><PageHeader title="Task" /><main className="flex-1 flex items-center justify-center"><div className="text-destructive text-sm">{error}</div></main></>
   )
   if (!task) return null
 
@@ -350,7 +356,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <>
-      <TopBar title={task.title} copyableId={task.id} />
+      <PageHeader title={task.title} copyableId={task.id} />
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
 
         {/* Read-only / status banner */}
@@ -817,7 +823,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                         </Button>
                       </div>
                     </div>
-                    <CardDescription className="text-xs">Structured event data captured by the LabelForge browser extension</CardDescription>
+                    <CardDescription className="text-xs">Event data captured by the LabelForge browser extension</CardDescription>
                   </CardHeader>
                   <Tabs defaultValue={hasExtEvents ? 'events' : 'structured'} className="w-full">
                     <div className="flex items-center justify-between px-6 pt-3 pb-0">

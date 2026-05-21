@@ -6,7 +6,7 @@ import { CheckCircle, Clock, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { TopBar } from '@/components/top-bar'
+import { FieldPageHeader } from '@/components/top-bar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
@@ -123,7 +123,7 @@ export default function ReviewerWork({ hideTitle }: { hideTitle?: boolean } = {}
 
   return (
     <>
-      {!hideTitle && <TopBar title="Work" subtitle="Your review activity" />}
+      {!hideTitle && <FieldPageHeader title="Work" subtitle="Your review activity" />}
       <main className="flex-1 overflow-y-auto p-2 lg:p-3 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>

@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { useAuth } from "@/lib/auth-context"
 import { api } from "@/lib/api"
 import type { Notification } from "@/lib/types"
 
@@ -25,16 +24,12 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, subtitle, copyableId }: TopBarProps) {
-  const { user } = useAuth()
-  const isFieldWorker = user && ['annotator', 'reviewer', 'reviewer_annotator'].includes(user.role)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!isFieldWorker) {
-      api.notifications.list().then(setNotifications).catch(() => {})
-    }
-  }, [isFieldWorker])
+    api.notifications.list().then(setNotifications).catch(() => {})
+  }, [])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -111,5 +106,43 @@ export function TopBar({ title, subtitle, copyableId }: TopBarProps) {
         </DropdownMenu>
       </div>
     </header>
+  )
+}
+
+interface FieldPageHeaderProps {
+  title: string
+  subtitle?: string
+  copyableId?: string
+}
+
+export function FieldPageHeader({ title, subtitle, copyableId }: FieldPageHeaderProps) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    if (!copyableId) return
+    navigator.clipboard.writeText(copyableId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="px-6 pt-5 pb-3 shrink-0">
+      {copyableId ? (
+        <div className="flex items-center gap-2">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Task ID</span>
+            <span className="font-mono text-sm font-semibold tracking-widest text-foreground uppercase select-all leading-tight">{copyableId}</span>
+          </div>
+          <button onClick={handleCopy} className="text-muted-foreground hover:text-foreground transition-colors">
+            {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      ) : (
+        <>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
+          {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+        </>
+      )}
+    </div>
   )
 }

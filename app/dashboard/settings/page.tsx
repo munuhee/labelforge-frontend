@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { TopBar } from '@/components/top-bar'
+import { TopBar, FieldPageHeader } from '@/components/top-bar'
 import { useAuth } from '@/lib/auth-context'
 import { useTheme } from 'next-themes'
 
@@ -67,6 +67,7 @@ export default function SettingsPage() {
 
   if (!user) return null
 
+  const isFieldWorker = ['annotator', 'reviewer', 'reviewer_annotator'].includes(user.role)
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 
   const handleChangePassword = () => {
@@ -97,7 +98,10 @@ export default function SettingsPage() {
 
   return (
     <>
-      <TopBar title="Settings" subtitle="Manage your account and preferences" />
+      {isFieldWorker
+        ? <FieldPageHeader title="Settings" subtitle="Manage your account and preferences" />
+        : <TopBar title="Settings" subtitle="Manage your account and preferences" />
+      }
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 lg:px-8 py-8 space-y-0">
 

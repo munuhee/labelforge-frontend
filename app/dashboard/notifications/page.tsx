@@ -6,8 +6,9 @@ import { Bell, CheckCheck, ExternalLink } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TopBar } from '@/components/top-bar'
+import { TopBar, FieldPageHeader } from '@/components/top-bar'
 import { PaginationBar } from '@/components/ui/pagination-bar'
+import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
 import type { Notification } from '@/lib/types'
 
@@ -25,6 +26,8 @@ const typeColors: Record<string, string> = {
 }
 
 export default function NotificationsPage() {
+  const { user } = useAuth()
+  const isFieldWorker = user ? ['annotator', 'reviewer', 'reviewer_annotator'].includes(user.role) : false
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [page, setPage] = useState(1)
   const [isLoading, setIsLoading] = useState(true)
@@ -52,7 +55,10 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <TopBar title="Notifications" subtitle="Stay up to date with your work" />
+      {isFieldWorker
+        ? <FieldPageHeader title="Notifications" subtitle="Stay up to date with your work" />
+        : <TopBar title="Notifications" subtitle="Stay up to date with your work" />
+      }
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">

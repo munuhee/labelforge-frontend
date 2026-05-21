@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { TopBar } from '@/components/top-bar'
+import { TopBar, FieldPageHeader } from '@/components/top-bar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAuth } from '@/lib/auth-context'
 import { api } from '@/lib/api'
@@ -61,6 +61,7 @@ export default function ReviewsPage() {
   const [subtaskChecks, setSubtaskChecks] = useState<boolean[]>([])
 
   const isReviewer = isReviewerOrAbove(user?.role ?? 'annotator')
+  const isFieldWorker = user ? ['annotator', 'reviewer', 'reviewer_annotator'].includes(user.role) : false
   const basePath = user?.clientSlug ? `/${user.clientSlug}/dashboard` : '/dashboard'
 
   useEffect(() => {
@@ -287,7 +288,10 @@ export default function ReviewsPage() {
 
   return (
     <>
-      <TopBar title="Reviews" subtitle={isReviewer ? 'Review submitted tasks' : 'Track your submission reviews'} />
+      {isFieldWorker
+        ? <FieldPageHeader title="Reviews" subtitle={isReviewer ? 'Review submitted tasks' : 'Track your submission reviews'} />
+        : <TopBar title="Reviews" subtitle={isReviewer ? 'Review submitted tasks' : 'Track your submission reviews'} />
+      }
       <main className="flex-1 overflow-y-auto p-4 lg:p-6">
         {isReviewer && atTaskLimit && (
           <Alert className="mb-4 border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20">

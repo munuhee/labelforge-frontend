@@ -6,7 +6,7 @@ import { AlertTriangle, ExternalLink, Wrench, ChevronLeft, ChevronRight, X } fro
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { TopBar } from '@/components/top-bar'
+import { FieldPageHeader } from '@/components/top-bar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api } from '@/lib/api'
 import type { Task } from '@/lib/types'
@@ -159,7 +159,7 @@ export default function AnnotatorWork({ hideTitle }: { hideTitle?: boolean } = {
 
   return (
     <>
-      {!hideTitle && <TopBar title="Work" subtitle="Your tasks and progress" />}
+      {!hideTitle && <FieldPageHeader title="Work" subtitle="Your tasks and progress" />}
       <main className="flex-1 overflow-y-auto p-2 lg:p-3 space-y-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>
